@@ -147,7 +147,6 @@ public class FlutterFirebaseMessagingService extends FirebaseMessagingService {
       return;
     }
 
-    String appBundlePath = FlutterMain.findAppBundlePath();
     AssetManager assets = context.getAssets();
     if (!isIsolateRunning.get()) {
       backgroundFlutterEngine = new FlutterEngine(context);
@@ -157,19 +156,27 @@ public class FlutterFirebaseMessagingService extends FirebaseMessagingService {
       // lookup will fail.
       FlutterCallbackInformation flutterCallback =
           FlutterCallbackInformation.lookupCallbackInformation(callbackHandle);
+      if (flutterCallback == null) {
+        Log.e(TAG, "Fatal: failed to find callback");
+        return;
+      }
 
-      DartExecutor executor = backgroundFlutterEngine.getDartExecutor();
-      firebaseMessagingPlugin.initializeBackgroundMethodChannel(executor);
-      DartCallback dartCallback = new DartCallback(assets, appBundlePath, flutterCallback);
+      String appBundlePath = FlutterMain.findAppBundlePath();
+      if (appBundlePath != null) {
 
-      executor.executeDartCallback(dartCallback);
+        DartExecutor executor = backgroundFlutterEngine.getDartExecutor();
+        firebaseMessagingPlugin.initializeBackgroundMethodChannel(executor);
+        DartCallback dartCallback = new DartCallback(assets, appBundlePath, flutterCallback);
 
-      // The pluginRegistrantCallback should only be set in the V1 embedding as
-      // plugin registration is done via reflection in the V2 embedding.
-      // If set while using V2 embedding, the application will crash.
-      if (pluginRegistrantCallback != null) {
-        Log.d(TAG, "Proceeding with v1 embedding");
-        pluginRegistrantCallback.registerWith(new ShimPluginRegistry(backgroundFlutterEngine));
+        executor.executeDartCallback(dartCallback);
+
+        // The pluginRegistrantCallback should only be set in the V1 embedding as
+        // plugin registration is done via reflection in the V2 embedding.
+        // If set while using V2 embedding, the application will crash.
+        if (pluginRegistrantCallback != null) {
+          Log.d(TAG, "Proceeding with v1 embedding");
+          pluginRegistrantCallback.registerWith(new ShimPluginRegistry(backgroundFlutterEngine));
+        }
       }
     }
   }
